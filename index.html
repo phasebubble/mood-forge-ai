@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>MoodForge AI</title>
+    <style>
+      body {
+        font-family: -apple-system, sans-serif;
+        background: #0f172a;
+        color: #fff;
+        text-align: center;
+        padding: 20px;
+        margin: 0;
+      }
+      h1 {
+        font-size: 2.8rem;
+        margin-bottom: 10px;
+      }
+      p {
+        font-size: 1.1rem;
+        color: #94a3b8;
+        margin-bottom: 20px;
+      }
+      .drop {
+        border: 3px dashed #4b5563;
+        padding: 50px;
+        border-radius: 16px;
+        margin: 30px auto;
+        max-width: 600px;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+      .drop.drag {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+      }
+      .drop button {
+        background: #5f5fff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      .preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        margin: 20px 0;
+      }
+      .preview img {
+        width: 90px;
+        height: 90px;
+        object-fit: cover;
+        border-radius: 12px;
+        border: 2px solid #333;
+      }
+      button#main-gen {
+        background: #ef4444;
+        color: white;
+        padding: 16px 32px;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        cursor: pointer;
+        margin: 10px;
+        transition: 0.3s;
+      }
+      button#main-gen:disabled {
+        background: #6b7280;
+        cursor: not-allowed;
+      }
+      button#main-gen:hover:not(:disabled) {
+        background: #dc2626;
+        transform: scale(1.05);
+      }
+      #results {
+        margin-top: 40px;
+      }
+      #designs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+      }
+      #designs img {
+        width: 300px;
+        height: 300px;
+        object-fit: cover;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+      #download-btn {
+        background: #10b981;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>MoodForge AI</h1>
+    <p>Drop 1 or more images → Get AI-generated designs</p>
+
+    <div class="drop" id="drop">
+      Drop images here or <button onclick="file.click()">Browse</button>
+      <input
+        type="file"
+        id="file"
+        multiple
+        accept="image/*"
+        style="display: none"
+      />
+    </div>
+
+    <div class="preview" id="preview"></div>
+    <button id="main-gen" disabled>Generate 3 Designs</button>
+
+    <div id="results" style="display: none">
+      <h2>Your AI Designs</h2>
+      <div id="designs"></div>
+      <button id="download-btn" onclick="downloadAll()">
+        Download All PNG
+      </button>
+    </div>
+
+    <script>
+      const REPLICATE_TOKEN = "r8_2u3h7OKA2Opq9mQWXcwtX52I24z68hE3rhzf0";
+      const IMGBB_KEY = "aa4a09f3df0b9e57a433da962c10ce55"; // YOUR KEY
+
+      const drop = document.getElementById("drop");
+      const file = document.getElementById("file");
+      const preview = document.getElementById("preview");
+      const genBtn = document.getElementById("main-gen");
+      const results = document.getElementById("results");
+      const designs = document.getElementById("designs");
+
+      let files = [];
+
+      drop.ondragover = (e) => {
+        e.preventDefault();
+        drop.classList.add("drag");
+      };
+      drop.ondragleave = drop.ondrop = () => drop.classList.remove("drag");
+      drop.ondrop = (e) => {
+        e.preventDefault();
+        handleFiles(e.dataTransfer.files);
+      };
+      file.onchange = (e) => handleFiles(e.target.files);
+
+      function handleFiles(f) {
+        files = Array.from(f).filter((x) => x.type.startsWith("image/"));
+        preview.innerHTML = files
+          .map((f) => `<img src="${URL.createObjectURL(f)}">`)
+          .join("");
+        genBtn.disabled = files.length === 0;
+      }
+
+      genBtn.onclick = async () => {
+        if (files.length === 0) return;
+        genBtn.textContent = "Generating...";
+        genBtn.disabled = true;
+        results.style.display = "none";
+        designs.innerHTML = "";
+
+        try {
+          // 1. Upload first image to imgbb.com (SAFE)
+          const form = new FormData();
+          form.append("image", files[0]);
+          const uploadRes = await fetch(
+            `https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,
+            {
+              method: "POST",
+              body: form,
+            }
+          );
+          const uploadData = await uploadRes.json();
+          const imageUrl = uploadData.data.url;
+
+          // 2. Call Replicate
+          const res = await fetch("https://api.replicate.com/v1/predictions", {
+            method: "POST",
+            headers: {
+              Authorization: `Token ${REPLICATE_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              version:
+                "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+              input: {
+                image: imageUrl,
+                prompt:
+                  "modern UI design inspired by this image, clean, professional, high quality, minimalist",
+                negative_prompt: "blurry, low quality, text, watermark, logo",
+                num_outputs: 3,
+              },
+            }),
+          });
+
+          let prediction = await res.json();
+
+          // 3. Poll
+          while (["starting", "processing"].includes(prediction.status)) {
+            await new Promise((r) => setTimeout(r, 3000));
+            const poll = await fetch(prediction.urls.get, {
+              headers: { Authorization: `Token ${REPLICATE_TOKEN}` },
+            });
+            prediction = await poll.json();
+          }
+
+          // 4. Show 3 results
+          if (prediction.status === "succeeded" && prediction.output) {
+            prediction.output.forEach((src) => {
+              const img = document.createElement("img");
+              img.src = src;
+              designs.appendChild(img);
+            });
+            results.style.display = "block";
+          } else {
+            alert("AI failed: " + (prediction.error || "Try again"));
+          }
+        } catch (e) {
+          alert("Error: " + e.message);
+        }
+
+        genBtn.textContent = "Generate 3 Designs";
+        genBtn.disabled = false;
+      };
+
+      window.downloadAll = () => {
+        designs.querySelectorAll("img").forEach((img, i) => {
+          const a = document.createElement("a");
+          a.href = img.src;
+          a.download = `moodforge-design-${i + 1}.png`;
+          a.click();
+        });
+      };
+    </script>
+  </body>
+</html>
