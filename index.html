@@ -156,76 +156,55 @@
         genBtn.disabled = files.length === 0;
       }
 
-      genBtn.onclick = async () => {
-        if (files.length === 0) return;
-        genBtn.textContent = "Generating...";
-        genBtn.disabled = true;
-        results.style.display = "none";
-        designs.innerHTML = "";
+     genBtn.onclick = async () => {
+  if (files.length === 0) return;
+  genBtn.textContent = "Generating...";
+  genBtn.disabled = true;
+  results.style.display = "none";
+  designs.innerHTML = "";
 
-        try {
-          // 1. Upload first image to imgbb.com (SAFE)
-          const form = new FormData();
-          form.append("image", files[0]);
-          const uploadRes = await fetch(
-            `https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,
-            {
-              method: "POST",
-              body: form,
-            }
-          );
-          const uploadData = await uploadRes.json();
-          const imageUrl = uploadData.data.url;
+  try {
+    // Upload to imgbb
+    const form = new FormData();
+    form.append("image", files[0]);
+    const uploadRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+      method: "POST",
+      body: form,
+    });
+    const { data } = await uploadRes.json();
+    const imageUrl = data.url;
 
-          // 2. Call Replicate
-          const res = await fetch("https://api.replicate.com/v1/predictions", {
-            method: "POST",
-            headers: {
-              Authorization: `Token ${REPLICATE_TOKEN}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              version:
-                "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-              input: {
-                image: imageUrl,
-                prompt:
-                  "modern UI design inspired by this image, clean, professional, high quality, minimalist",
-                negative_prompt: "blurry, low quality, text, watermark, logo",
-                num_outputs: 3,
-              },
-            }),
-          });
+    // Call YOUR serverless API
+    const apiRes = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageUrl }),
+    });
 
-          let prediction = await res.json();
+    let prediction = await apiRes.json();
 
-          // 3. Poll
-          while (["starting", "processing"].includes(prediction.status)) {
-            await new Promise((r) => setTimeout(r, 3000));
-            const poll = await fetch(prediction.urls.get, {
-              headers: { Authorization: `Token ${REPLICATE_TOKEN}` },
-            });
-            prediction = await poll.json();
-          }
+    // Poll
+    while (["starting", "processing"].includes(prediction.status)) {
+      await new Promise(r => setTimeout(r, 3000));
+      const poll = await fetch(`/api/generate?id=${prediction.id}`);
+      prediction = await poll.json();
+    }
 
-          // 4. Show 3 results
-          if (prediction.status === "succeeded" && prediction.output) {
-            prediction.output.forEach((src) => {
-              const img = document.createElement("img");
-              img.src = src;
-              designs.appendChild(img);
-            });
-            results.style.display = "block";
-          } else {
-            alert("AI failed: " + (prediction.error || "Try again"));
-          }
-        } catch (e) {
-          alert("Error: " + e.message);
-        }
+    if (prediction.output) {
+      prediction.output.forEach(src => {
+        const img = document.createElement("img");
+        img.src = src;
+        designs.appendChild(img);
+      });
+      results.style.display = "block";
+    }
+  } catch (e) {
+    alert("Error: " + e.message);
+  }
 
-        genBtn.textContent = "Generate 3 Designs";
-        genBtn.disabled = false;
-      };
+  genBtn.textContent = "Generate 3 Designs";
+  genBtn.disabled = false;
+};
 
       window.downloadAll = () => {
         designs.querySelectorAll("img").forEach((img, i) => {
