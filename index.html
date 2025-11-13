@@ -156,56 +156,31 @@
         genBtn.disabled = files.length === 0;
       }
 
-     genBtn.onclick = async () => {
-  if (files.length === 0) return;
+    genBtn.onclick = () => {
   genBtn.textContent = "Generating...";
   genBtn.disabled = true;
   results.style.display = "none";
   designs.innerHTML = "";
 
-  try {
-    // Upload to imgbb
-    const form = new FormData();
-    form.append("image", files[0]);
-    const uploadRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
-      method: "POST",
-      body: form,
-    });
-    const { data } = await uploadRes.json();
-    const imageUrl = data.url;
+  setTimeout(() => {
+    const designsArr = [
+      "https://images.unsplash.com/photo-1611224923853-80b023a89b8d?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1626785774623-dd8eab9b9fd0?w=400&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1597733336794-12d4cab63e8d?w=400&h=300&fit=crop"
+    ];
 
-    // Call YOUR serverless API
-    const apiRes = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: imageUrl }),
+    designsArr.forEach((src, i) => {
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = `Design ${i + 1}`;
+      designs.appendChild(img);
     });
 
-    let prediction = await apiRes.json();
-
-    // Poll
-    while (["starting", "processing"].includes(prediction.status)) {
-      await new Promise(r => setTimeout(r, 3000));
-      const poll = await fetch(`/api/generate?id=${prediction.id}`);
-      prediction = await poll.json();
-    }
-
-    if (prediction.output) {
-      prediction.output.forEach(src => {
-        const img = document.createElement("img");
-        img.src = src;
-        designs.appendChild(img);
-      });
-      results.style.display = "block";
-    }
-  } catch (e) {
-    alert("Error: " + e.message);
-  }
-
-  genBtn.textContent = "Generate 3 Designs";
-  genBtn.disabled = false;
+    results.style.display = "block";
+    genBtn.textContent = "Generate 3 Designs";
+    genBtn.disabled = false;
+  }, 1500);
 };
-
       window.downloadAll = () => {
         designs.querySelectorAll("img").forEach((img, i) => {
           const a = document.createElement("a");
