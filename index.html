@@ -1,100 +1,106 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>MoodForge AI</title>
-    <style>
-      body { font-family: -apple-system, sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 20px; margin: 0; }
-      h1 { font-size: 2.8rem; margin-bottom: 10px; }
-      p { font-size: 1.1rem; color: #94a3b8; margin-bottom: 20px; }
-      .drop { border: 3px dashed #4b5563; padding: 50px; border-radius: 16px; margin: 30px auto; max-width: 600px; cursor: pointer; transition: 0.3s; }
-      .drop.drag { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
-      .drop button { background: #5f5fff; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-      .preview { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 20px 0; }
-      .preview img { width: 90px; height: 90px; object-fit: cover; border-radius: 12px; border: 2px solid #333; }
-      button#main-gen { background: #ef4444; color: white; padding: 16px 32px; border: none; border-radius: 12px; font-size: 1.2rem; font-weight: bold; cursor: pointer; margin: 10px; transition: 0.3s; }
-      button#main-gen:disabled { background: #6b7280; cursor: not-allowed; }
-      button#main-gen:hover:not(:disabled) { background: #dc2626; transform: scale(1.05); }
-      #results { margin-top: 40px; }
-      #designs { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
-      #designs img { width: 300px; height: 300px; object-fit: cover; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); }
-      #download-btn { background: #10b981; margin-top: 20px; }
-    </style>
-  </head>
-  <body>
-    <h1>MoodForge AI</h1>
-    <p>Drop 1 or more images → Get 3 AI designs</p>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MoodForge AI</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 20px; margin: 0; }
+    h1 { font-size: 2.8rem; margin-bottom: 10px; }
+    p { font-size: 1.1rem; color: #94a3b8; margin-bottom: 20px; }
+    .drop { border: 3px dashed #4b5563; padding: 50px; border-radius: 16px; margin: 30px auto; max-width: 600px; cursor: pointer; transition: 0.3s; }
+    .drop.drag { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+    .drop button { background: #5f5fff; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .preview { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 20px 0; }
+    .preview img { width: 90px; height: 90px; object-fit: cover; border-radius: 12px; border: 2px solid #333; }
+    button#main-gen { background: #ef4444; color: white; padding: 16px 32px; border: none; border-radius: 12px; font-size: 1.2rem; font-weight: bold; cursor: pointer; margin: 10px; transition: 0.3s; }
+    button#main-gen:disabled { background: #6b7280; cursor: not-allowed; }
+    button#main-gen:hover:not(:disabled) { background: #dc2626; transform: scale(1.05); }
+    #results { margin-top: 40px; }
+    #designs { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+    #designs img { width: 300px; height: 300px; object-fit: cover; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); }
+    #download-btn { background: #10b981; margin-top: 20px; padding: 12px 24px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>MoodForge AI</h1>
+  <p>Drop your moodboard → Get 3 Figma-ready designs in 30 sec</p>
 
-    <div class="drop" id="drop">
-      Drop images here or <button onclick="file.click()">Browse</button>
-      <input type="file" id="file" multiple accept="image/*" style="display: none" />
-    </div>
+  <div class="drop" id="drop">
+    Drop images here or <button onclick="file.click()">Browse</button>
+    <input type="file" id="file" multiple accept="image/*" style="display: none" />
+  </div>
 
-    <div class="preview" id="preview"></div>
-    <button id="main-gen" disabled>Generate 3 Designs</button>
+  <div class="preview" id="preview"></div>
+  <button id="main-gen" disabled>Generate 3 Designs</button>
 
-    <div id="results" style="display: none">
-      <h2>Your AI Designs</h2>
-      <div id="designs"></div>
-      <button id="download-btn" onclick="downloadAll()">Download All PNG</button>
-    </div>
+  <div id="results" style="display: none">
+    <h2>Your AI Designs</h2>
+    <div id="designs"></div>
+    <button id="download-btn" onclick="downloadAll()">Download All PNG</button>
+  </div>
 
-    <script>
-      const HF_TOKEN = "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"; // YOUR TOKEN
-      const drop = document.getElementById("drop");
-      const file = document.getElementById("file");
-      const preview = document.getElementById("preview");
-      const genBtn = document.getElementById("main-gen");
-      const results = document.getElementById("results");
-      const designs = document.getElementById("designs");
+  <script>
+    const drop = document.getElementById("drop");
+    const file = document.getElementById("file");
+    const preview = document.getElementById("preview");
+    const genBtn = document.getElementById("main-gen");
+    const results = document.getElementById("results");
+    const designs = document.getElementById("designs");
 
-      let files = [];
+    let files = [];
 
-      drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("drag"); };
-      drop.ondragleave = drop.ondrop = () => drop.classList.remove("drag");
-      drop.ondrop = (e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); };
-      file.onchange = (e) => handleFiles(e.target.files);
+    drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("drag"); };
+    drop.ondragleave = drop.ondrop = () => drop.classList.remove("drag");
+    drop.ondrop = (e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); };
+    file.onchange = (e) => handleFiles(e.target.files);
 
-      function handleFiles(f) {
-        files = Array.from(f).filter((x) => x.type.startsWith("image/"));
-        preview.innerHTML = files.map((f) => `<img src="${URL.createObjectURL(f)}">`).join("");
-        genBtn.disabled = files.length === 0;
-      }
+    function handleFiles(f) {
+      files = Array.from(f).filter(x => x.type.startsWith("image/"));
+      preview.innerHTML = files.map(f => `<img src="${URL.createObjectURL(f)}">`).join("");
+      genBtn.disabled = files.length === 0;
+    }
 
-      genBtn.onclick = () => {
-  genBtn.textContent = "Generating...";
-  genBtn.disabled = true;
-  results.style.display = "none";
-  designs.innerHTML = "";
+    // YOUR 3 MOCKUPS — PLUGGED IN!
+    genBtn.onclick = () => {
+      genBtn.textContent = "Generating...";
+      genBtn.disabled = true;
+      results.style.display = "none";
+      designs.innerHTML = "";
 
-  setTimeout(() => {
-    const designsArr = [
-      "https://images.unsplash.com/photo-1611224923853-80b023a89b8d?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1626785774623-dd8eab9b9fd0?w=800&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1597733336794-12d4cab63e8d?w=800&h=600&fit=crop"
-    ];
+      setTimeout(() => {
+        const mockDesigns = [
+          "https://i.ibb.co/TMm8zPTS/first.jpg",
+          "https://i.ibb.co/602rd67Z/second.jpg",
+          "https://i.ibb.co/Rp5s8sDG/third.jpg"
+        ];
 
-    designsArr.forEach((src, i) => {
-      const img = document.createElement("img");
-      img.src = src;
-      img.alt = `AI Design ${i + 1}`;
-      img.style.cssText = "width:300px;height:300px;object-fit:cover;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,0.3);margin:10px;";
-      designs.appendChild(img);
-    });
-
-    results.style.display = "block";
-    genBtn.textContent = "Generate 3 Designs";
-    genBtn.disabled = false;
-  }, 1500);
-};
-
-      window.downloadAll = () => {
-        designs.querySelectorAll("img").forEach((img, i) => {
-          const a = document.createElement("a");
-          a.href = img.src;
-          a.download = `moodforge-design-${i + 1}.png`;
-          a.click();
+        mockDesigns.forEach((src, i) => {
+          const img = document.createElement("img");
+          img.src = src;
+          img.alt = `Design ${i + 1}`;
+          designs.appendChild(img);
         });
-      };
-    </script>
-  </body>
+
+        results.style.display = "block";
+        genBtn.textContent = "Generate 3 Designs";
+        genBtn.disabled = false;
+      }, 1500);
+    };
+
+    window.downloadAll = () => {
+      const links = [
+        "https://i.ibb.co/TMm8zPTS/first.jpg",
+        "https://i.ibb.co/602rd67Z/second.jpg",
+        "https://i.ibb.co/Rp5s8sDG/third.jpg"
+      ];
+      links.forEach((url, i) => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `moodforge-design-${i + 1}.jpg`;
+        a.click();
+      });
+    };
+  </script>
+</body>
 </html>
